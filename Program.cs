@@ -24,7 +24,7 @@ async Task WaitForPlayersAsync()
         await Console.Out.WriteLineAsync("First player connected!");
 
         secondPlayerContext = await connectorListener.GetContextAsync();
-        await Console.Out.WriteLineAsync("Secont player connected!");
+        await Console.Out.WriteLineAsync("Second player connected!");
     });
 }
 await WaitForPlayersAsync();
@@ -49,16 +49,16 @@ await secondPlayerContext.Response.OutputStream.WriteAsync(secondPlayerRes, 0, s
 secondPlayerContext.Response.Close();
 
 Console.WriteLine("test");
-async Task WaitForMoves()
+async Task WaitForMovesAsync()
 {
-
+    HttpListener moveListener = new HttpListener();
+    moveListener.Prefixes.Add("http://localhost:5000/game/");
+    moveListener.Start();
     while (firstPlayer.Score < scoreToWin && secondPlayer.Score < scoreToWin)
     {
         await Task.Run(async () =>
         {
-            HttpListener moveListener = new HttpListener();
-            moveListener.Prefixes.Add("http://localhost:5000/game/");
-            moveListener.Start();
+            
             firstMove = null;
             secondMove = null;
 
@@ -166,8 +166,24 @@ async Task WaitForMoves()
             await secondPlayerContext.Response.OutputStream.WriteAsync(res, 0, res.Length);
             secondPlayerContext.Response.Close();
         }
+        else
+        {
+            secondPlayer.Score++;
+
+            byte[] res = Encoding.UTF8.GetBytes(
+                $"PlayerId: {secondPlayer.Id} wins!\n" +
+                $"Score:\n" +
+                $"Player{firstPlayer.Id} score: {firstPlayer.Score}\n" +
+                $"Player{secondPlayer.Id} score: {secondPlayer.Score}\n");
+
+
+            await firstPlayerContext.Response.OutputStream.WriteAsync(res, 0, res.Length);
+            firstPlayerContext.Response.Close();
+            await secondPlayerContext.Response.OutputStream.WriteAsync(res, 0, res.Length);
+            secondPlayerContext.Response.Close();
+        }
 
     }
 
 }
-await WaitForMoves();
+await WaitForMovesAsync();
